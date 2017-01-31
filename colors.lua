@@ -11,7 +11,7 @@ function contrastColor(backgroundColor)
   local result = randomColor()
   local backgroundLumiance = lumiance(backgroundColor)
 
-  while math.abs(backgroundLumiance - lumiance(result)) < 0.3
+  while math.abs(backgroundLumiance - lumiance(result)) < 0.4
   do
     result = randomColor()
   end
@@ -21,3 +21,6 @@ end
 function lumiance(color)
   return 1 -  ( 0.299 * color[1] + 0.587 * color[2] + 0.114 * color[3]) / 255
 end
+
+WHITE = { 255, 255, 255 }
+BLACK = { 0,     0,   0 }

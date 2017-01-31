@@ -1,40 +1,58 @@
 require 'colors'
 
+local Side = require 'actors/side'
+
 function love.load()
   math.randomseed(os.time())
 
-  width         = love.graphics.getWidth()
-  height        = love.graphics.getHeight()
-
-  centerHeight  = height / 2
-  criticalTime  = height
-
-  centerWidth   = love.graphics.getWidth() / 2
-  highscoreFont = love.graphics.newFont(centerHeight / 6)
-  endFont       = love.graphics.newFont(18)
-
-  love.graphics.setFont(highscoreFont)
-  highscoreWidth = highscoreFont:getWidth("12")
-
-  yourScore     = "YOUR SCORE: "
-  tapToRestart  = "TAP TO RESTART"
+  --love.window.setMode(320, 240, flags)
+  --love.window.setMode(640, 480, flags)
+  -- love.window.setMode(1024, 768, flags)
+   love.window.setMode(1280, 720, {resizable = true})
 
 
-  maxHorizontalCount = 9
+  newGame()
+end
+
+function love.resize(w, h)
   newGame()
 end
 
 function newGame()
-  timeline      = 0
-  speed         = 1
-  gameOver      = false
-  highscore     = 0
-  highscoreText = "00"
-  pause         = false
-  userChoice    = nil
-  offset        = 10
-  level         = 1
-  sides         = createSides()
+  width         = love.graphics.getWidth()
+  centerWidth   = width / 2
+
+  height        = love.graphics.getHeight()
+  centerHeight  = height / 2
+  criticalTime  = height
+
+  timelineWidth = centerWidth / 8
+  highscoreFont = love.graphics.newFont("origap__.ttf",centerWidth / 16)
+  endFont       = love.graphics.newFont(18)
+
+  love.graphics.setFont(highscoreFont)
+  --highscoreWidth = highscoreFont:getWidth("12")
+  highscoreWidth = timelineWidth
+  print(highscoreFont:getWidth("12"), highscoreFont:getWidth("1"), highscoreFont:getWidth("666"), centerWidth / 8)
+
+  yourScore     = "YOUR SCORE: "
+  tapToRestart  = "TAP TO RESTART"
+
+  maxHorizontalCount = math.floor(centerWidth / highscoreWidth)
+  timeline              = 0
+  speed                 = 1
+  gameOver              = false
+  highscore             = 00
+  highscoreText         = ""
+  highscoreLeft         = "0"
+  highscoreRight        = "0"
+  highscoreLength       = highscoreText:len()
+  highscoreMiddleLength = 0
+  pause                 = false
+  userChoice            = nil
+  offset                = 10
+  level                 = 1
+  sides                 = createSides()
 end
 
 function love.update(dt)
@@ -49,10 +67,10 @@ function love.update(dt)
       timeline = timeline / speed
       increaseSpeed(dt)
       increaseScore(dt)
+      changeHighscoreText(dt, highscore)
       sides = createSides(dt)
     else decreaseTime(dt)
     end
-
     userChoice = nil
   end
 end
@@ -78,36 +96,32 @@ function love.keypressed(key)
   then
     userChoice = key
   end
+end
 
+function changeHighscoreText(dt, highscore)
+  highscoreText   = "" .. highscore
+  highscoreLength = highscoreText:len()
+  if highscoreLength % 2 ~= 0 then highscoreText = "0" .. highscoreText end
+  highscoreLength = highscoreText:len()
+
+  highscoreMiddleLength = highscoreLength / 2
+  highscoreLeft  = highscoreText:sub(1, highscoreMiddleLength)
+  highscoreRight = highscoreText:sub(highscoreMiddleLength + 1, highscoreLength)
 end
 
 function isCorrectAnswer(userChoice)
   return userChoice == "left" and shouldLeft() or userChoice == "right" and shouldRight()
 end
 
-function shouldLeft()  return sides.left.figures.count > sides.right.figures.count end
-function shouldRight() return sides.left.figures.count < sides.right.figures.count end
+function shouldLeft()  return sides.left.figuresCount > sides.right.figuresCount end
+function shouldRight() return sides.left.figuresCount < sides.right.figuresCount end
 
 function decreaseTime()
   timeline = timeline + height / 2
 end
 
-function newSides(dt)
-  highscore = highscore + 1
-  timeline = timeline / speed
-  increaseSpeed(dt)
-  if highscore > 0 and highscore < 10 then highscoreText = "0" .. highscore end
-  sides = createSides()
-end
-
 function increaseScore(dt)
   highscore = highscore + 1
-  if highscore > 0 and highscore < 10
-  then
-    highscoreText = "0" .. highscore
-  else
-    highscoreText = "" .. highscore
-  end
 end
 
 function increaseSpeed(dt)
@@ -117,39 +131,34 @@ end
 
 function createSides()
   local sides = {}
-  local left  = {}
-  local right = {}
+  local pair = pairOfCounts()
+  local leftCount =  pair.left
+  local rightCount = pair.right
+  sides.left  = Side(0,           0, centerWidth, height, randomColor(), leftCount,  maxHorizontalCount, timelineWidth / 2, "left", "rect")
+  sides.right = Side(centerWidth, 0, centerWidth, height, randomColor(), rightCount, maxHorizontalCount, timelineWidth / 2, "right", "rect")
+  leftTimelineColor = lumiance(sides.left.color) < 0.5 and BLACK or WHITE
+  rightTimelineColor = lumiance(sides.right.color) < 0.5 and BLACK or WHITE
 
-  left.x       = 0
-  left.y       = 0
-  left.color   = randomColor()
-  left.figures = createFigures(left.color)
+  return sides;
+end
 
-  leftTimelineColor = lumiance(left.color) < 0.5 and {0, 00, 00} or {255, 255, 255}
+function pairOfCounts()
+  local left  = math.random(1, maxHorizontalCount)
+  local right = math.random(1, maxHorizontalCount)
 
-  right.x       = centerWidth
-  right.y       = 0
-  right.color   = randomColor()
-  right.figures = createFigures(right.color)
-
-  rightTimelineColor = lumiance(right.color) < 0.5 and {0, 00, 00} or {255, 255, 255}
-
-  local panicLimit = 10
+  local panicLimit   = 10
   local currentSteps = 0
 
-  while left.figures.count == right.figures.count do
-    right.figures = createFigures(right.color)
+  while left == right
+  do
+    right = math.random(1, maxHorizontalCount)
 
     currentSteps = currentSteps + 1
     if currentSteps > panicLimit then
       assert(false, "to long generation of unique values of figures count")
     end
   end
-
-  sides.left  = left
-  sides.right = right
-
-  return sides
+  return { left = left, right = right }
 end
 
 
@@ -157,17 +166,17 @@ function createFigures(color)
   local figures  = {}
   figures.count  = math.random(1, maxHorizontalCount)
   figures.color  = contrastColor(color)
-  figures.width  = (centerWidth / maxHorizontalCount / 2)
+  figures.width  = highscoreWidth
   figures.height = figures.width
   return figures
 end
 
 function love.draw()
-  drawSide(sides.left)
-  drawSide(sides.right)
+  sides.left:draw()
+  sides.right:draw()
   drawTimeline()
   drawScore()
-  if timeline > criticalTime then
+  if gameOver then
     drawGameOverScreen()
   end
 end
@@ -177,60 +186,35 @@ function drawBackground(side)
   love.graphics.rectangle("fill", side.x, side.y, centerWidth, height)
 end
 
-function drawSide(side)
-  drawBackground(side)
-  drawFigures(side.x, side.figures)
-end
-
-function drawFigures(startPosition, figures)
-  love.graphics.setColor(figures.color)
-  for i = 0, figures.count - 1 do
-    --love.graphics.rectangle("fill", startPosition + i * figures.width, centerHeight, figures.width / 2, figures.height / 2)
-    love.graphics.rectangle("fill",
-      startPosition + figures.width / 2 + i * figures.width * 2, centerHeight
-      , figures.width, figures.height
-      ,figures.width / 8)
-  end
-end
-
 function drawTimeline()
-  local thickness = highscoreWidth /2
-  local leftX   = centerWidth - thickness
-  local rightX  = centerWidth + thickness
-  local centerY = timeline / 2
+  local thickness = highscoreWidth / 2
+  local leftX     = centerWidth - thickness
+  local rightX    =  centerWidth + thickness
+  local centerY   = timeline / 2
   drawLine(leftX, rightX, thickness, centerY)
 end
 
 function drawLine(leftX, rightX, thickness, centerY, color)
-  local color = {0, 0, 0, 4 }
+    love.graphics.setColor(leftTimelineColor[1], leftTimelineColor[2], leftTimelineColor[3], 32)
+    love.graphics.rectangle("fill", leftX,      0, thickness,   centerY)
+    love.graphics.rectangle("fill", leftX, height, thickness, - centerY)
 
-  love.graphics.setColor(leftTimelineColor)
-  love.graphics.line(leftX, 0, leftX,        timeline / 2)
-  love.graphics.line(leftX, height, leftX,   height - timeline / 2)
-
-  love.graphics.setColor(rightTimelineColor)
-  love.graphics.line(rightX, 0, rightX,      timeline / 2)
-  love.graphics.line(rightX, height, rightX, height - timeline / 2)
+    love.graphics.setColor(rightTimelineColor[1], rightTimelineColor[2], rightTimelineColor[3], 32)
+    love.graphics.rectangle("fill", centerWidth,      0, thickness,   centerY)
+    love.graphics.rectangle("fill", centerWidth, height, thickness, - centerY)
 end
 
 function drawScore()
-  local width = highscoreFont:getWidth(highscoreText)
+  love.graphics.setColor(255, 255, 255, 255)
 
+  local leftc  = { leftTimelineColor[1] , leftTimelineColor[2]  , leftTimelineColor[3] , 225}
+  local rightc = { rightTimelineColor[1] , rightTimelineColor[2]  , rightTimelineColor[3], 225 }
 
-  local c1 = { rightTimelineColor[1], leftTimelineColor[2], leftTimelineColor[3], 32 }
-  love.graphics.setColor(c1)
-
-  -- love.graphics.rectangle("fill", centerWidth - width / 2, centerHeight - width / 2 - 30, width / 2, width)
-
-  c2 = { leftTimelineColor[1], rightTimelineColor[2], rightTimelineColor[3], 32 }
-  love.graphics.setColor(c2)
-  -- love.graphics.rectangle("fill", centerWidth, centerHeight - width / 2 - 30, width / 2, width)
-
-  love.graphics.setColor(leftTimelineColor)
-  love.graphics.printf(highscoreText:sub(1, 1), -width/4, centerHeight - width / 2 - 30, love.graphics.getWidth(), 'center')
-
-  love.graphics.setColor(rightTimelineColor)
-  love.graphics.printf(highscoreText:sub(2, 2), width/4, centerHeight - width / 2 - 30, love.graphics.getWidth(), 'center')
+  love.graphics.printf( { leftc, highscoreLeft, rightc, highscoreRight }
+                         ,0
+                         ,centerHeight - (highscoreFont:getHeight(highscoreText) / 2)
+                         ,width
+                         ,'center')
 end
 
 function drawGameOverScreen()
