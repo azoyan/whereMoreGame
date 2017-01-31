@@ -36,7 +36,7 @@ function Side:createFigures(count)
   for i = 1, self.figuresCount, 1
   do
     x = self.x + i * diameter * 2
-    if self.direction == "left" then x = x - self.padding end
+    if self.direction == "left" then x = self.width - x end--- self.padding end
     local figure = createFigure(x, y, radius, diameter, color)
     -- print(x, y, radius, diameter, self.figuresCount, self.maxHorizontalCount)
     table.insert(figures, figure)
